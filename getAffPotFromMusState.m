@@ -24,17 +24,28 @@ if ~isfield(params,'startIdx') || ~isfield(params,'endIdx')
     params.endIdx = {'idx_endTime',0};
 end
 
+if ~isfield(params,'time_step')
+    params.time_step = trial_data(1).bin_size;
+end
 
-
-emgInd = find(strcmp(params.emgName,trial_data(1).emg_names));
-musInd = find(strcmp(params.musName,trial_data(1).muscle_names));
-
+try %Cheap way to deal with different nomenclature for these variables
+    emgInd = find(strcmp(params.emgName,trial_data(1).emg_names));
+    musInd = find(strcmp(params.musName,trial_data(1).muscle_names));
+catch
+    emgInd = find(strcmp(params.emgName,trial_data(1).emg_names));
+    musInd = find(strcmp(params.musName,trial_data(1).musNames));
+end
 
 
 
 bs = params.bufferSize;
 bin_size = trial_data(1).bin_size;
 
+% Do we need to interpolate?
+if bin_size ~= params.time_step
+    interpolate = 1;
+    time_step = params.time_step;
+end
 
 
 
@@ -62,32 +73,52 @@ parfor a = 1:numel(params.trialInd)
     t = (-bs*bin_size:bin_size:(endIdx-startIdx)*bin_size);
     
 
-    %%% Process emg into gamma signal
+    %%% Get gamma and cdl variables, interpolate if necessary
     gamma = trial_data(thisTrial).emgNorm(timeIdx,emgInd);
-    gamma = smooth(gamma,5);
-    gamma = 0.5*zeros(size(gamma));
+    gamma = [ones(bs,1)*gamma(1); gamma];
+    cdl = trial_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
+    cdl = [ones(bs,1)*cdl(1); cdl]';
+
+    % If we need to interpolate
+    if interpolate == 1
+        t_interp = (-bs*bin_size:time_step:(endIdx-startIdx)*bin_size);
+        gamma = interp1(t,gamma,t_interp);
+        cdl = interp1(t,cdl,t_interp);
+        t = t_interp;
+    end
     
+    %%% Process emg into gamma signal
+    gamma = smooth(gamma,0.05/(t(2)-t(1))); %50 ms smoothing filter
+    %if we want constant gamma, use initial value
+%     gamma = gamma(1)*ones(size(gamma));
+    
+%     gammaD = 0.2*ones(size(gamma));
     gammaD = gamma;
-    gammaD = [ones(bs,1)*gammaD(1); gammaD];
+    gammaDinit = gammaD(1);
+%     gammaD = [ones(bs,1)*gammaDinit; gammaD];
     delta_gammaD = diff(gammaD);
-    delta_gammaD = [0.5; delta_gammaD];
+    delta_gammaD = [gammaDinit+0.2; delta_gammaD];
     
+    delta_gammaD(gammaD>=1) = 0; %saturate gamma at 1
+    
+%     gammaS = 0.2*ones(size(gamma));
     gammaS = gamma;
-    gammaS = [ones(bs,1)*gammaS(1); gammaS];
+    gammaSinit = gammaS(1);
+%     gammaS = [ones(bs,1)*gammaSinit; gammaS];
     delta_gammaS = diff(gammaS);
-    delta_gammaS = [0.5; delta_gammaS];
+    delta_gammaS = [gammaSinit+0.2; delta_gammaS];
+    
+    delta_gammaS(gammaS>=1) = 0; %saturate gamma at 1
     
     % GET L0 as a struct field?
     % Initialize hs with real initial lengths!
     % develop driver to take bagParams/chainParams to initialize hs models
-    
-    
-    cdl = trial_data(thisTrial).musLenRel(timeIdx,musInd);
-    delta_cdl = diff(cdl)*1300;
+    cdlInit = cdl(1)-1300;
+    delta_cdl = diff(cdl);
     delta_cdl(end+1) = delta_cdl(end);
 %     delta_cdl = trial_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
 %     delta_cdl = trial_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
-    delta_cdl = [zeros(bs,1)*delta_cdl(1); delta_cdl];
+    delta_cdl(1) = cdlInit;
 %     delta_cdl = smooth(delta_cdl,10);
 %     delta_cdl = delta_cdl;
 
@@ -101,6 +132,8 @@ parfor a = 1:numel(params.trialInd)
     end
        
 
+       
+    
 % Use MATLAB's built-in parallel computing to run simulations and store
 % data: 
         [hsB(a),dataB(a),hsC(a),dataC(a),flags(a)] = sarcSimDriver(t,delta_gammaD',delta_gammaS',delta_cdl');
@@ -117,14 +150,18 @@ parfor a = 1:numel(params.trialInd)
             out(a).errorflag = 1;
         else 
             [r,~,~] = sarc2spindle(dataB(a),dataC(a),1,1,0.03,1,0.0);
-            out(a).r = r(bs+1:end);
-            out(a).dataB = removeBufferFromStruct(dataB(a),bs);
-            out(a).dataC = removeBufferFromStruct(dataC(a),bs);
-            out(a).hsB = hsB(a);
-            out(a).hsC = hsC(a);
-            out(a).delta_cdl = delta_cdl(bs+1:end);
-            out(a).trialInd = thisTrial;
-
+            if strcmpi(params.dataStore,'lean')
+                out(a).r = r(bs+1:end);
+            else
+                out(a).r = r(bs+1:end);
+                out(a).dataB = removeBufferFromStruct(dataB(a),bs);
+                out(a).dataC = removeBufferFromStruct(dataC(a),bs);
+                out(a).hsB = hsB(a);
+                out(a).hsC = hsC(a);
+                out(a).delta_cdl = delta_cdl(bs+1:end);
+                out(a).trialInd = thisTrial;
+                
+            end
         end
 %     trial_data(a).spindle = out(a);  %Weird indexing because of parfor
     

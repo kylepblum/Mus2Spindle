@@ -7,12 +7,12 @@ params.muscles = {'brachioradialis','brachialis','tricep_lat','tricep_lon',...
     'deltoid_ant','deltoid_med','deltoid_pos','teres_major','infraspinatus'...
     'ext_carp_rad_brevis','ext_carpi_ulnaris','ext_digitorum','bicep_sh',...
     'bicep_lh'};
+params.emgToPlot =8;
 params.trialType = 'bum';
 
 
-for i = [3 4 7 8]%:numel(params.muscles)
 
-params.musIdx = i;
+params.musIdx = 3;
 
 
 % plotMS(trial_data,out_AGDyn_LowStc,params)
@@ -21,7 +21,6 @@ params.musIdx = i;
 % plotMS(trial_data,out_HighDyn_HighStc,params)
 % plotMS(trial_data,out_AGDyn_HighStc,params)
 % plotMS(trial_data,out_HighDyn_AGStc,params)
-plotMS(trial_data,spindleOut_constG(:,params.musIdx),params)
+plotCombinedSignals(trial_data,spindleOut_constG(:,params.musIdx),params)
 
-end
 

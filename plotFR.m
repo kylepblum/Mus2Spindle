@@ -1,23 +1,24 @@
-function plotEMG(trial_data,params)
+function plotFR(trial_data,params)
 
 
 tds = trial_data;
-emgToPlot = params.emgToPlot;
+frToPlot = params.frToPlot;
 numCond = 4;
 if strcmpi(params.trialType,'bump')
     conds = [0 90 180 270];
 else
     conds = [0 pi/2 pi 3*pi/2]; %Chris's data mixes radians and degrees use
 end
-EMGtemp = [];
-EMGtemp2 = [];
-lenTemp = [];
+FRtemp = [];
+FRtemp2 = [];
+lenTemp1 = [];
+lenTemp2 = [];
 
 
 hfig = figure; hold on;
-set(hfig,'units','normalized','outerposition',[0 0 0.5 1],'PaperSize',[5 7],...
-    'Renderer','Painters');
-htitle = sgtitle(tds(1).emg_names{emgToPlot},'FontName','Helvetica','FontSize',16,'Interpreter','None');
+set(hfig,'units','normalized','outerposition',[0 0 0.5 0.4],'PaperSize',[5 7],...
+    'Renderer','Painters','Color','White');
+% htitle = sgtitle(tds(1).emg_names{frToPlot},'FontName','Helvetica','FontSize',16,'Interpreter','None');
 
 
 for i = 1:numCond
@@ -28,16 +29,16 @@ for i = 1:numCond
     else
         trialsToPlot = getActTrials(tds,bump_params);
     end
-    emg_idx = emgToPlot;
+    fr_idx = frToPlot;
 
     topAxesPosition = [0.1+0.21*(i-1) 0.5 0.18 0.35];
     botAxesPosition = [0.1+0.21*(i-1) 0.1 0.18 0.35];
-    htop(i) = subplot(2,4,i); hold on; axis([-0.1 1 -5 5]);
+    htop(i) = subplot(2,4,i); hold on; axis([-0.1 1 0 120]);
     set(htop(i),'Position',topAxesPosition,'xticklabel',[],...
         'FontName','Helvetica','FontSize',12)
     title([num2str(conds(i)) '(n=' num2str(numel(trialsToPlot)) ')']);
     
-    hbot(i) = subplot(2,4,i+4); hold on; axis([-0.1 1 0.9 1.1]);
+    hbot(i) = subplot(2,4,i+4); hold on; axis([-0.1 1 -20 20]);
     set(hbot(i),'Position',botAxesPosition,...
         'FontName','Helvetica','FontSize',12)
     xlabel('time (s)')
@@ -47,7 +48,7 @@ for i = 1:numCond
         set(htop(i),'yticklabel',[])
         set(hbot(i),'yticklabel',[])
     else
-        htop(i).YLabel.String = 'EMG (au)';
+        htop(i).YLabel.String = 'Firing Rate (spikes/s)';
         htop(i).YLabel.FontName = 'Helvetica';
         hbot(i).YLabel.String = 'len (L0)';
         hbot(i).YLabel.FontName = 'Helvetica';
@@ -57,52 +58,59 @@ for i = 1:numCond
         
         thisTrial = trialsToPlot(trial);
         if strcmpi(params.trialType,'bump')
-            bumpIdx = (tds(thisTrial).idx_bumpTime-10):(tds(thisTrial).idx_bumpTime+100);
+            bumpIdx = (tds(thisTrial).idx_bumpTime-10):(tds(thisTrial).idx_bumpTime+50);
         else
-            bumpIdx = tds(thisTrial).idx_goCueTime:tds(thisTrial).idx_goCueTime+100;
+            bumpIdx = (tds(thisTrial).idx_goCueTime+5):tds(thisTrial).idx_goCueTime+80;
         end
         if ~isnan(bumpIdx)
             
-            EMGsignal = tds(thisTrial).emgNorm(bumpIdx,emg_idx);
+            FRsignal = tds(thisTrial).cuneate_spikes(bumpIdx,fr_idx);
 %             EMGsignal = smooth(EMGsignal,50);
 %             motorOn = tds(thisTrial).motor_control(bumpIdx,:)>100;
               motorOn = 101:200;
-%             POSsignalx = tds(thisTrial).pos(bumpIdx,1) - tds(1).pos(1,1);
-%             POSsignaly = tds(thisTrial).pos(bumpIdx,2) - tds(1).pos(1,2);
+            POSsignalx = tds(thisTrial).pos(bumpIdx,1) - tds(1).pos(1,1);
+            POSsignaly = tds(thisTrial).pos(bumpIdx,2) - tds(1).pos(1,2);
 %             
-            POSsignalMus = tds(thisTrial).musLenRel(bumpIdx,params.musIdx);
-            lenTemp(:,end+1) = POSsignalMus;
+%             POSsignalMus = tds(thisTrial).musLenRel(bumpIdx,params.musIdx);
+            lenTemp1(:,end+1) = POSsignalx;
+            lenTemp2(:,end+1) = POSsignaly;
             
 %             time = (-100:numel(EMGsignal)-101)'*0.01;
-            time = (-10:numel(EMGsignal)-11)'*0.01;
-            line(time,EMGsignal,'Parent',htop(i))
-            EMGtemp(:,end+1) = EMGsignal;
+            time = (-10:numel(FRsignal)-11)'*0.01;
+            line(time,FRsignal,'Parent',htop(i))
+            FRtemp(:,end+1) = FRsignal;
 %             line(time,POSsignalx,'Parent',hbot(i))
 %             line(time,POSsignaly,'Parent',hbot(i),'Color',[1 0 0])
-            line(time,POSsignalMus,'Parent',hbot(i))
+            line(time,POSsignalx,'Parent',hbot(i),'Color',[0.8 0.8 1])
+            line(time,POSsignaly,'Parent',hbot(i),'Color',[1 0.8 0.8])
+                        
             
             
         end 
     end
-    meanSignal(:,i) = mean(EMGtemp,2);
-    semSignal(:,i) = std(EMGtemp,[],2)./sqrt(size(EMGtemp,2));
-    meanLen(:,i) = nanmean(lenTemp,2);
-    line(time,meanLen(:,i),'linewidth',5,'Color',[0 0 1],'Parent',hbot(i))
+    meanSignal(:,i) = mean(FRtemp,2);
+    semSignal(:,i) = std(FRtemp,[],2)./sqrt(size(FRtemp,2));
+    meanLen1(:,i) = nanmean(lenTemp1,2);
+    meanLen2(:,i) = nanmean(lenTemp2,2);
+    line(time,meanLen1(:,i),'linewidth',5,'Color',[0 0 1],'Parent',hbot(i))
+    line(time,meanLen2(:,i),'linewidth',5,'Color',[1 0 0],'Parent',hbot(i))
+
     line(time,meanSignal(:,i),'lineWidth',5,'Color',[0 0 1],'Parent',htop(i))
     line(time,meanSignal(:,i)-semSignal(:,i),'lineWidth',2,'Color',[0 0 0.5],'Parent',htop(i))
     line(time,meanSignal(:,i)+semSignal(:,i),'lineWidth',2,'Color',[0 0 0.5],'Parent',htop(i))
 %     line(time(motorOn(:)),0.15*ones(size(time(motorOn(:)))),'lineWidth',5,'color',[0.3 0.8 0.3],'Parent',htop(i))
     
-    EMGtemp = [];
-    EMGtemp2 = [];
-    lenTemp = [];
+    FRtemp = [];
+    FRtemp2 = [];
+    lenTemp1 = [];
+    lenTemp2 = [];
     
     
 
 end
-if params.savefig == 1
-    saveas(hfig,[params.savepath tds(1).emg_names{emgToPlot} params.filetype])
-    close(hfig)
-end
+% if params.savefig == 1
+%     saveas(hfig,[params.savepath tds(1).musNames{frToPlot} params.filetype])
+%     close(hfig)
+% end
 
 end

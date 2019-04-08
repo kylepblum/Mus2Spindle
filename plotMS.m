@@ -4,7 +4,13 @@ function plotMS(trial_data,spindle_data,params)
 msd = spindle_data;
 tds = trial_data;
 numCond = 4;
-conds = [0 90 180 270];
+
+if strcmpi(params.trialType,'bump')
+    conds = [0 90 180 270];
+else
+    conds = [0 pi/2 pi 3*pi/2]; %Chris's data mixes radians and degrees use
+end
+
 MStemp = [];
 MStemp2 = [];
 lenTemp = [];
@@ -12,30 +18,39 @@ gamTemp = [];
 gamTemp2 = [];
 
 
-hfig = fig; hold on;
-set(hfig,'units','normalized','outerposition',[0 0 0.2 1],'PaperSize',[5 7],...
-    'Renderer','Painters');
+hfig = figure; hold on;
+set(hfig,'units','normalized','outerposition',[0 0.0 0.4 1],'PaperSize',[8.5 11],...
+    'Renderer','Painters','Color','white');
+htitle = sgtitle(params.muscles{params.musIdx},'FontName','Helvetica','FontSize',16,'Interpreter','None');
 
 
 for i = 1:numCond
     bump_params.bumpDir = conds(i);
-    trialsToPlot = getBumpTrials(trial_data,bump_params);
+    bump_params.targDir = conds(i);
+%     trialsToPlot = getBumpTrials(trial_data,bump_params);
+    trialsToPlot = getActTrials(trial_data,bump_params);
+    
+    if strcmpi(params.trialType,'bump')
+        trialsToPlot = getBumpTrials(tds,bump_params);
+    else
+        trialsToPlot = getActTrials(tds,bump_params);
+    end
+
     ms_idx = trialsToPlot;
 
     topAxesPosition = [0.1+0.21*(i-1) 0.7 0.18 0.23];
     midAxesPosition = [0.1+0.21*(i-1) 0.4 0.18 0.23];
     botAxesPosition = [0.1+0.21*(i-1) 0.1 0.18 0.23];
-    htop(i) = subplot(3,4,i); hold on; axis([-0.1 0.2 0.05 0.5]);
+    htop(i) = subplot(3,4,i); hold on; axis([0.0 1.2 0.0 0.5]);
     set(htop(i),'Position',topAxesPosition,'xticklabel',[],...
         'FontName','Helvetica','FontSize',12)
-    title([num2str(conds(i)) '(n=' num2str(numel(trialsToPlot)) ')']);
+    text(0.3, 0.4,[num2str(conds(i)) '(n=' num2str(numel(trialsToPlot)) ')']);
     
-    
-    hmid(i) = subplot(3,4,i+4); hold on; axis([-0.1 0.2 0.1 0.9]);
-    set(hmid(i),'Position',midAxesPosition,...
+    hmid(i) = subplot(3,4,i+4); hold on; axis([0.0 1.2 0.1 0.9]);
+    set(hmid(i),'Position',midAxesPosition,'xticklabel',[],...
         'FontName','Helvetica','FontSize',12)
 
-    hbot(i) = subplot(3,4,i+8); hold on; axis([-0.1 0.2 0.95 1.05]);
+    hbot(i) = subplot(3,4,i+8); hold on; axis([0.0 1.2 0.9 1.1]);
     set(hbot(i),'Position',botAxesPosition,...
         'FontName','Helvetica','FontSize',12)
     xlabel('time (s)')
@@ -46,9 +61,9 @@ for i = 1:numCond
         set(hmid(i),'yticklabel',[])
         set(hbot(i),'yticklabel',[])
     else
-        htop(i).YLabel.String = 'EMG (au)';
+        htop(i).YLabel.String = 'Firing Rate (au)';
         htop(i).YLabel.FontName = 'Helvetica';
-        hmid(i).YLabel.String = 'EMG (au)';
+        hmid(i).YLabel.String = 'Gamma (au)';
         hmid(i).YLabel.FontName = 'Helvetica';        
         hbot(i).YLabel.String = 'len (L0)';
         hbot(i).YLabel.FontName = 'Helvetica';
@@ -60,23 +75,32 @@ for i = 1:numCond
         %         bumpIdx = (msd(thisTrial).idx_bumpTime-100):(msd(thisTrial).idx_bumpTime+500);
         %         if ~isnan(bumpIdx)
         
-        MSsignal = msd(thisTrial).r(1:300);
+        if strcmpi(params.trialType,'bump')
+            timeIdx = 101:221;
+        else
+            timeIdx = 132:282;
+        end
+        
+        MSsignal = msd(thisTrial).r(timeIdx);
 %         EMGsignal = smooth(EMGsignal,50);
 %         motorOn = tds(thisTrial).motor_control(:,:)>5;
-%         POSsignalx = tds(thisTrial).pos(bumpIdx,1) - tds(1).pos(1,1);
-%         POSsignaly = tds(thisTrial).pos(bumpIdx,2) - tds(1).pos(1,2);
+%         POSsignalx = (tds(thisTrial).pos(1:200,1) - tds(1).pos(1,1))/tds(1).pos(1,1);
+% %         POSsignaly = tds(thisTrial).pos(bumpIdx,2) - tds(1).pos(1,2);
         %
-        POSsignalMus = msd(thisTrial).dataB.cmd_length(1:300)/1300;
+        POSsignalMus = msd(thisTrial).dataB.cmd_length(timeIdx)/1300;
+%         MSsignal = MSsignal + (POSsignalMus - 1)*5;
+        
         lenTemp(:,end+1) = POSsignalMus;
         
-        GAMsignalDyn = msd(thisTrial).dataB.f_activated(1:300);
-        GAMsignalStc = msd(thisTrial).dataC.f_activated(1:300);
+        GAMsignalDyn = msd(thisTrial).dataB.f_activated(timeIdx);
+        GAMsignalStc = msd(thisTrial).dataC.f_activated(timeIdx);
         gamTemp(:,end+1) = GAMsignalDyn;
         gamTemp2(:,end+1) = GAMsignalStc;
         
-        time = (-100:numel(MSsignal)-101)'*0.001;
+        time = (0:numel(MSsignal)-1)'*0.005;
         line(time,MSsignal,'Parent',htop(i),'LineWidth',0.5,'Color',[0.7 0.7 0.8])
         MStemp(:,end+1) = MSsignal;
+        
 %         line(time,POSsignalx,'Parent',hbot(i))
 %         line(time,POSsignaly,'Parent',hbot(i),'Color',[1 0 0])
         line(time,POSsignalMus,'Parent',hbot(i),'LineWidth',0.5,'Color',[0.7 0.7 0.8])
@@ -111,7 +135,7 @@ for i = 1:numCond
 
 end
 if params.savefig == 1
-    saveas(hfig,[params.savepath ms(1).emg_names{msToPlot} params.filetype])
+    saveas(hfig,[params.savepath params.muscles{params.musIdx} '_' params.trialType params.filetype])
     close(hfig)
 end
 

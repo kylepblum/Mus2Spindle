@@ -7,7 +7,7 @@ close all
 
 for i = 1:numTrials
    
-    h(i) = fig;
+    h(i) = figure;
     if i <= 5
         h(i).Position = h(i).Position + [4*(i-1) 0 0 0];
     elseif i <= 10

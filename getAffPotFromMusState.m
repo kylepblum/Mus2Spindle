@@ -59,8 +59,13 @@ parfor a = 1:numel(params.trialInd)
 % Take out relevant data from trial a and pad so model can initialize
 
     thisTrial = params.trialInd(a);
-    startIdx = trial_data(thisTrial).(params.startIdx{1}) + params.startIdx{2};
-    endIdx = trial_data(thisTrial).(params.endIdx{1}) + params.endIdx{2};
+    if isnan(trial_data(thisTrial).bumpDir(thisTrial))
+        startIdx = trial_data(thisTrial).idx_goCueTime - 10;
+        endIdx = trial_data(thisTrial).idx_goCueTime + 100;
+    else
+        startIdx = trial_data(thisTrial).idx_bumpTime - 10;
+        endIdx = trial_data(thisTrial).idx_bumpTime + 100;
+    end
     if isnan(startIdx) || isnan(endIdx)
         startIdx = 1;
         endIdx = 601;
@@ -92,21 +97,21 @@ parfor a = 1:numel(params.trialInd)
     %if we want constant gamma, use initial value
 %     gamma = gamma(1)*ones(size(gamma));
     
-%     gammaD = 0.2*ones(size(gamma));
-    gammaD = gamma;
+    gammaD = 0.2*ones(size(gamma));
+%     gammaD = gamma;
     gammaDinit = gammaD(1);
 %     gammaD = [ones(bs,1)*gammaDinit; gammaD];
     delta_gammaD = diff(gammaD);
-    delta_gammaD = [gammaDinit+0.2; delta_gammaD];
+    delta_gammaD = [gammaDinit+0.1; delta_gammaD];
     
     delta_gammaD(gammaD>=1) = 0; %saturate gamma at 1
     
-%     gammaS = 0.2*ones(size(gamma));
-    gammaS = gamma;
+    gammaS = 0.2*ones(size(gamma));
+%     gammaS = gamma;
     gammaSinit = gammaS(1);
 %     gammaS = [ones(bs,1)*gammaSinit; gammaS];
     delta_gammaS = diff(gammaS);
-    delta_gammaS = [gammaSinit+0.2; delta_gammaS];
+    delta_gammaS = [gammaSinit+0.1; delta_gammaS];
     
     delta_gammaS(gammaS>=1) = 0; %saturate gamma at 1
     
@@ -149,9 +154,15 @@ parfor a = 1:numel(params.trialInd)
             out(a).trialInd = thisTrial;
             out(a).errorflag = 1;
         else 
-            [r,~,~] = sarc2spindle(dataB(a),dataC(a),1,1,0.03,1,0.0);
+            [r,rs,rd] = sarc2spindle(dataB(a),dataC(a),1,2,0.03,1,0.0);
             if strcmpi(params.dataStore,'lean')
-                out(a).r = r(bs+1:end);
+                out(a).r = r(bs+1:end)';
+                out(a).rs = rs(bs+1:end)';
+                out(a).rd = rd(bs+1:end)';
+                out(a).bin_size = time_step; % Rename to be consistent with TD
+                out(a).dataB.f_activated = dataB(a).f_activated(bs+1:end)';
+                out(a).dataC.f_activated = dataC(a).f_activated(bs+1:end)';
+                out(a).dataB.cmd_length = dataB(a).cmd_length(bs+1:end)';
             else
                 out(a).r = r(bs+1:end);
                 out(a).dataB = removeBufferFromStruct(dataB(a),bs);

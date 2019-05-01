@@ -3,9 +3,10 @@ params.filetype = '.pdf';
 params.savefig = 0;
 params.musIdx = 6;
 params.trialType = 'bum';
+params.spikeArray = 'cuneate_spikes';
 
 
-for a = 4
+for a = 1:19
     params.frToPlot = a;
-    plotFR(trial_data,params)
+    plotFR(td,params)
 end

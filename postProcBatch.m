@@ -102,7 +102,12 @@ end
 %% Get smooth firing rates
 % smoothParams.signals = 'cuneate_spikes';
 smoothParams.signals = 'cuneate_spikes';
-smoothParams.kernel_SD = 0.05;
+smoothParams.kernel_width = 0.05;
 smoothParams.calc_rate = true;
-trial_data = smoothSignals(trial_data,smoothParams);
+trial_data2 = smoothSignals(trial_data,smoothParams);
+
+smoothKin.signals = {'musLenRel','musVelRel'};
+smoothKin.kernel_width = 0.05;
+smoothKin.calc_rate = false;
+trial_data2 = smoothSignals(trial_data2,smoothKin);
     

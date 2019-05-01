@@ -27,6 +27,19 @@ if params.opensimChris % Are we post processing Chris's data?
         idx = trial_data.idx_startTime; %This should be before bump
         L0 = mean(trial_data.opensim(idx:idx+4,params.idx_opensimLen));
     end
+    
+else
+    if strcmpi(params.L0,'session_mean')
+        L0 = nanmean(trial_data.muscle_len);
+    elseif strcmpi(params.L0,'arbitrary')
+        idx = params.L0idx;
+        L0 = nanmean(trial_data.muscle_len);
+    elseif strcmpi(params.L0,'trial_init')
+        idx = trial_data.idx_startTime; %This should be before bump
+        L0 = mean(trial_data.muscle_len);
+    end
+
+    
 end
 
 if isfield(trial_data,'muscle_len') %Raeed's data

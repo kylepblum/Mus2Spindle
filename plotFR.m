@@ -7,6 +7,7 @@ numCond = 4;
 if strcmpi(params.trialType,'bump')
     conds = [0 90 180 270];
 else
+%     conds = [0 90 180 270];
     conds = [0 pi/2 pi 3*pi/2]; %Chris's data mixes radians and degrees use
 end
 FRtemp = [];
@@ -24,6 +25,7 @@ set(hfig,'units','normalized','outerposition',[0 0 0.5 0.4],'PaperSize',[5 7],..
 for i = 1:numCond
     bump_params.bumpDir = conds(i);
     bump_params.targDir = conds(i);
+%     bump_params.target_direction = conds(i);
     if strcmpi(params.trialType,'bump')
         trialsToPlot = getBumpTrials(tds,bump_params);
     else
@@ -33,7 +35,7 @@ for i = 1:numCond
 
     topAxesPosition = [0.1+0.21*(i-1) 0.5 0.18 0.35];
     botAxesPosition = [0.1+0.21*(i-1) 0.1 0.18 0.35];
-    htop(i) = subplot(2,4,i); hold on; axis([-0.1 1 0 120]);
+    htop(i) = subplot(2,4,i); hold on; axis([-0.1 1 0 0.1]);
     set(htop(i),'Position',topAxesPosition,'xticklabel',[],...
         'FontName','Helvetica','FontSize',12)
     title([num2str(conds(i)) '(n=' num2str(numel(trialsToPlot)) ')']);
@@ -58,16 +60,21 @@ for i = 1:numCond
         
         thisTrial = trialsToPlot(trial);
         if strcmpi(params.trialType,'bump')
-            bumpIdx = (tds(thisTrial).idx_bumpTime-10):(tds(thisTrial).idx_bumpTime+50);
+            if isfield(tds,'idx_bumpTime')
+                bumpIdx = (tds(thisTrial).idx_bumpTime-100):(tds(thisTrial).idx_bumpTime+1000);
+            else 
+                bumpIdx = (tds(thisTrial).idx_endTime-1000):(tds(thisTrial).idx_endTime);
+            end
+                
         else
-            bumpIdx = (tds(thisTrial).idx_goCueTime+5):tds(thisTrial).idx_goCueTime+80;
+            bumpIdx = (tds(thisTrial).idx_goCueTime+50):tds(thisTrial).idx_goCueTime+1000;
         end
         if ~isnan(bumpIdx)
             
-            FRsignal = tds(thisTrial).cuneate_spikes(bumpIdx,fr_idx);
+            FRsignal = tds(thisTrial).(params.spikeArray)(bumpIdx,fr_idx);
 %             EMGsignal = smooth(EMGsignal,50);
 %             motorOn = tds(thisTrial).motor_control(bumpIdx,:)>100;
-              motorOn = 101:200;
+%               motorOn = 101:200;
             POSsignalx = tds(thisTrial).pos(bumpIdx,1) - tds(1).pos(1,1);
             POSsignaly = tds(thisTrial).pos(bumpIdx,2) - tds(1).pos(1,2);
 %             
@@ -76,7 +83,7 @@ for i = 1:numCond
             lenTemp2(:,end+1) = POSsignaly;
             
 %             time = (-100:numel(EMGsignal)-101)'*0.01;
-            time = (-10:numel(FRsignal)-11)'*0.01;
+            time = (-10:numel(FRsignal)-11)'*0.001;
             line(time,FRsignal,'Parent',htop(i))
             FRtemp(:,end+1) = FRsignal;
 %             line(time,POSsignalx,'Parent',hbot(i))
@@ -88,7 +95,7 @@ for i = 1:numCond
             
         end 
     end
-    meanSignal(:,i) = mean(FRtemp,2);
+    meanSignal(:,i) = nanmean(FRtemp,2);
     semSignal(:,i) = std(FRtemp,[],2)./sqrt(size(FRtemp,2));
     meanLen1(:,i) = nanmean(lenTemp1,2);
     meanLen2(:,i) = nanmean(lenTemp2,2);

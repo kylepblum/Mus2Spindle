@@ -1,11 +1,11 @@
 function plotFR(trial_data,params)
 
 
-tds = trial_data;
+td = trial_data;
 frToPlot = params.frToPlot;
 numCond = 4;
 if strcmpi(params.trialType,'bump')
-    conds = [0 90 180 270];
+    conds = 0:45:315;
 else
 %     conds = [0 90 180 270];
     conds = [0 pi/2 pi 3*pi/2]; %Chris's data mixes radians and degrees use
@@ -27,9 +27,9 @@ for i = 1:numCond
     bump_params.targDir = conds(i);
 %     bump_params.target_direction = conds(i);
     if strcmpi(params.trialType,'bump')
-        trialsToPlot = getBumpTrials(tds,bump_params);
+        trialsToPlot = getBumpTrials(td,bump_params);
     else
-        trialsToPlot = getActTrials(tds,bump_params);
+        trialsToPlot = getActTrials(td,bump_params);
     end
     fr_idx = frToPlot;
 
@@ -60,23 +60,23 @@ for i = 1:numCond
         
         thisTrial = trialsToPlot(trial);
         if strcmpi(params.trialType,'bump')
-            if isfield(tds,'idx_bumpTime')
-                bumpIdx = (tds(thisTrial).idx_bumpTime-100):(tds(thisTrial).idx_bumpTime+1000);
+            if isfield(td,'idx_bumpTime')
+                bumpIdx = (td(thisTrial).idx_bumpTime-100):(td(thisTrial).idx_bumpTime+1000);
             else 
-                bumpIdx = (tds(thisTrial).idx_endTime-1000):(tds(thisTrial).idx_endTime);
+                bumpIdx = (td(thisTrial).idx_endTime-1000):(td(thisTrial).idx_endTime);
             end
                 
         else
-            bumpIdx = (tds(thisTrial).idx_goCueTime+50):tds(thisTrial).idx_goCueTime+1000;
+            bumpIdx = (td(thisTrial).idx_goCueTime+50):td(thisTrial).idx_goCueTime+1000;
         end
         if ~isnan(bumpIdx)
             
-            FRsignal = tds(thisTrial).(params.spikeArray)(bumpIdx,fr_idx);
+            FRsignal = td(thisTrial).(params.spikeArray)(bumpIdx,fr_idx);
 %             EMGsignal = smooth(EMGsignal,50);
 %             motorOn = tds(thisTrial).motor_control(bumpIdx,:)>100;
 %               motorOn = 101:200;
-            POSsignalx = tds(thisTrial).pos(bumpIdx,1) - tds(1).pos(1,1);
-            POSsignaly = tds(thisTrial).pos(bumpIdx,2) - tds(1).pos(1,2);
+            POSsignalx = td(thisTrial).pos(bumpIdx,1) - td(1).pos(1,1);
+            POSsignaly = td(thisTrial).pos(bumpIdx,2) - td(1).pos(1,2);
 %             
 %             POSsignalMus = tds(thisTrial).musLenRel(bumpIdx,params.musIdx);
             lenTemp1(:,end+1) = POSsignalx;

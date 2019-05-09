@@ -3,7 +3,7 @@ params.filetype = '.pdf';
 params.savefig = 0;
 params.musIdx = 6;
 params.trialType = 'bum';
-params.spikeArray = 'cuneate_spikes';
+params.spikeArray = 'S1_spikes';
 
 
 for a = 1:19

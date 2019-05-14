@@ -60,7 +60,7 @@ end
 
 
 tic
-parfor a = 1:numel(params.trialInd)
+for a = 1:numel(params.trialInd)
 
 % Take out relevant data from trial a and pad so model can initialize
 
@@ -83,10 +83,10 @@ parfor a = 1:numel(params.trialInd)
     else
         if numel(trial_data)==1
             startIdx = 1;
-            endIdx = size(trial_data.pos,1);
+            endIdx = numel(trial_data.pos,1);
         else 
             startIdx = 1;
-            endIdx = size(trial_data(a).pos,1);
+            endI
         end
     end
     

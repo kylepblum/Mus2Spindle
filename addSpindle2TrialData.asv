@@ -2,7 +2,7 @@
 % spindleParams.trialInd = getBumpTrials(trial_data,bumpParams);
 % spindleParams.trialInd = spindleParams.trialInd(:);
 
-
+load('C:\Users\kpb8927\data\td-library\Han_20171106_TRT_5ms')
 
 
 emgNames = trial_data.emg_names;
@@ -15,7 +15,7 @@ musNames = musNamesFull([4, 18, 19, 20, 8, 9, 10, 24, 23, 35, 38, 37, ...
 %% Set up params structure array
 
 
-for i = 1:numel(trial_data(1).emg_names)-1 %Not including Trapezius
+for i = 1:numel(emgNames) %Not including Trapezius
     spindleParams(i).trialInd = 1:numel(trial_data);
     spindleParams(i).bufferSize = 0; %This was taken care of in TD procoessing
     spindleParams(i).time_step = 0.005;
@@ -28,15 +28,29 @@ for i = 1:numel(trial_data(1).emg_names)-1 %Not including Trapezius
 
 end
 
-%%
-spindle = struct(
-for mus = 1:4%1:numel(trial_data.emg_names)
+%% Run spindle model on muscle kinematics data
+tic;
+spindleData = struct('SimOut',[],'metaParams',[]);
+parfor mus = 1:length(spindleParams)
 
     disp([spindleParams(mus).emgName])
 
     
-    spindle(mus).SimOut = getAffPotFromMusState(trial_data,spindleParams(mus));
+    spindleData(mus).SimOut = getAffPotFromMusState(trial_data,spindleParams(mus));
 
-
-
+    spindleData(mus).metaParams = spindleParams(mus);
 end
+
+toc;
+
+%% Rearrange spindle model output and put into TD
+temp = trial_data;
+temp.spindle = [];
+
+parfor trial = 1:numel(trial_data)
+    for mus = 1:numel(spindleData)
+        trial_data(trial).spindle(:,mus) = spindleData(mus).SimOut(trial).r;
+    end
+end
+
+

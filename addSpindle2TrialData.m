@@ -2,7 +2,9 @@
 % spindleParams.trialInd = getBumpTrials(trial_data,bumpParams);
 % spindleParams.trialInd = spindleParams.trialInd(:);
 
+filename = 'C:\Users\kpb8927\data\td-library\Han_20171106_TRT_5ms.mat';
 
+load(filename)
 
 
 emgNames = trial_data.emg_names;
@@ -28,9 +30,10 @@ for i = 1:numel(emgNames) %Not including Trapezius
 
 end
 
-%%
+%% Run spindle model on muscle kinematics data
+tic;
 spindleData = struct('SimOut',[],'metaParams',[]);
-for mus = 1:length(spindleParams)
+parfor mus = 1:length(spindleParams)
 
     disp([spindleParams(mus).emgName])
 
@@ -38,5 +41,25 @@ for mus = 1:length(spindleParams)
     spindleData(mus).SimOut = getAffPotFromMusState(trial_data,spindleParams(mus));
 
     spindleData(mus).metaParams = spindleParams(mus);
-
 end
+
+toc;
+
+%% Rearrange spindle model output and put into TD
+temp = trial_data;
+% temp.spindle = [];
+
+parfor trial = 1:numel(trial_data)
+    for mus = 1:numel(spindleData)
+        temp(trial).spindle(:,mus) = spindleData(mus).SimOut(trial).r;
+    end
+end
+
+trial_data = temp;
+
+%% Save file
+
+save(filename,trial_data)
+
+
+

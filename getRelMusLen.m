@@ -56,34 +56,11 @@ elseif isfield(trial_data,'opensim') %Chris's data
 end
 
 %Deal with NaNs
-t = (1:size(musLenRel,1))';
 % 
-for mus = 1:size(musLenRel,2)
-    nanLen = isnan(musLenRel(:,mus));
-    musLenRel(nanLen,mus) = interp1(t(~nanLen), musLenRel(~nanLen,mus), t(nanLen));
-    %Special consideration for NaNs at the margins
-    if nanLen(1)
-       firstNonNaN = find(~isnan(musLenRel(:,mus)),1);
-       musLenRel(1:firstNonNaN-1,mus) = musLenRel(firstNonNaN,mus);
-    end
-    if nanLen(end)
-       finalNonNaN = find(~isnan(musLenRel(:,mus)),1,'last');
-       musLenRel(end-finalNonNaN:end,mus) = musLenRel(finalNonNaN,mus);      
-    end
+    
+musLenRel = fillmissing(musLenRel,'linear',1,'EndValues','nearest');
+musVelRel = fillmissing(musVelRel,'linear',1,'EndValues','nearest');
 
-    nanVel = isnan(musVelRel(:,mus));
-    musVelRel(nanVel,mus) = interp1(t(~nanVel), musVelRel(~nanVel,mus), t(nanVel));
-    %Special consideration for NaNs at the margins
-    if nanVel(1)
-       firstNonNaN = find(~isnan(musVelRel(:,mus)),1);
-       musVelRel(1:firstNonNaN-1,mus) = musVelRel(firstNonNaN,mus);
-    end
-    if nanLen(end)
-       finalNonNaN = find(~isnan(musVelRel(:,mus)),1,'last');
-       musVelRel(end-finalNonNaN:end,mus) = musVelRel(finalNonNaN,mus);      
-    end
-
-end
 
 %Add to trial_data struct
 trial_data.musLenRel = musLenRel;

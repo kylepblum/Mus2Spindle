@@ -83,10 +83,10 @@ for a = 1:numel(params.trialInd)
     else
         if numel(trial_data)==1
             startIdx = 1;
-            endIdx = numel(trial_data.pos,1);
+            endIdx = size(trial_data.pos,1);
         else 
             startIdx = 1;
-            endI
+            endIdx = size(trial_data(a).pos,1);
         end
     end
     
@@ -99,7 +99,7 @@ for a = 1:numel(params.trialInd)
 
     %%% Get gamma and cdl variables, interpolate if necessary
     gamma = trial_data(thisTrial).emgNorm(timeIdx,emgInd);
-    gamma = [ones(bs,1)*gamma(1); gamma];
+%     gamma = [ones(bs,1)*gamma(1); gamma];
     cdl = trial_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
     cdl = [ones(bs,1)*cdl(1); cdl]';
 

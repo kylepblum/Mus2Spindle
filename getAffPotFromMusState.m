@@ -60,7 +60,7 @@ end
 
 
 tic
-parfor a = 1:numel(params.trialInd)
+for a = 1:numel(params.trialInd)
 
 % Take out relevant data from trial a and pad so model can initialize
 
@@ -99,7 +99,7 @@ parfor a = 1:numel(params.trialInd)
 
     %%% Get gamma and cdl variables, interpolate if necessary
     gamma = trial_data(thisTrial).emgNorm(timeIdx,emgInd);
-    gamma = [ones(bs,1)*gamma(1); gamma];
+%     gamma = [ones(bs,1)*gamma(1); gamma];
     cdl = trial_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
     cdl = [ones(bs,1)*cdl(1); cdl]';
 
@@ -116,8 +116,8 @@ parfor a = 1:numel(params.trialInd)
     %if we want constant gamma, use initial value
 %     gamma = gamma(1)*ones(size(gamma));
     
-    gammaD = 0.2*ones(size(gamma));
-%     gammaD = gamma;
+%     gammaD = 0.2*ones(size(gamma));
+    gammaD = gamma;
     gammaDinit = gammaD(1);
 %     gammaD = [ones(bs,1)*gammaDinit; gammaD];
     delta_gammaD = diff(gammaD);
@@ -125,8 +125,8 @@ parfor a = 1:numel(params.trialInd)
     
     delta_gammaD(gammaD>=1) = 0; %saturate gamma at 1
     
-    gammaS = 0.2*ones(size(gamma));
-%     gammaS = gamma;
+%     gammaS = 0.2*ones(size(gamma));
+    gammaS = gamma;
     gammaSinit = gammaS(1);
 %     gammaS = [ones(bs,1)*gammaSinit; gammaS];
     delta_gammaS = diff(gammaS);

@@ -20,7 +20,7 @@ musNames = musNamesFull([4, 18, 19, 20, 8, 9, 10, 24, 23, 35, 38, 37, ...
 for i = 1:numel(emgNames) %Not including Trapezius
     spindleParams(i).trialInd = 1:numel(trial_data);
     spindleParams(i).bufferSize = 0; %This was taken care of in TD procoessing
-    spindleParams(i).time_step = 0.005;
+    spindleParams(i).time_step = 0.01;
 
     spindleParams(i).startIdx = {'idx_startTime',0}; %reference index and relative idx
     spindleParams(i).endIdx = {'idx_endTime',0};  

@@ -1,4 +1,4 @@
-function out = getAffPotFromMusState(trial_data,params)
+function out = getAffPotFromMusState(in_data,params)
 
 % params
 %   .trialInd
@@ -7,7 +7,7 @@ function out = getAffPotFromMusState(trial_data,params)
 %   .bufferSize
 
 if ~isfield(params,'trialInd')
-    params.trialInd = 1:numel(trial_data);
+    params.trialInd = 1:numel(in_data);
 end
 
 if ~isfield(params,'emgName') || ~isfield(params,'musName')
@@ -25,7 +25,7 @@ if ~isfield(params,'startIdx') || ~isfield(params,'endIdx')
 end
 
 if ~isfield(params,'time_step')
-    params.time_step = trial_data(1).bin_size;
+    params.time_step = in_data(1).bin_size;
 end
 
 if ~isfield(params,'bumps')
@@ -33,17 +33,17 @@ if ~isfield(params,'bumps')
 end
 
 try %Cheap way to deal with different nomenclature for these variables
-    emgInd = find(strcmp(params.emgName,trial_data(1).emg_names));
-    musInd = find(strcmp(params.musName,trial_data(1).muscle_names));
+    emgInd = find(strcmp(params.emgName,in_data(1).emg_names));
+    musInd = find(strcmp(params.musName,in_data(1).muscle_names));
 catch
-    emgInd = find(strcmp(params.emgName,trial_data(1).emg_names));
-    musInd = find(strcmp(params.musName,trial_data(1).musNames));
+    emgInd = find(strcmp(params.emgName,in_data(1).emg_names));
+    musInd = find(strcmp(params.musName,in_data(1).musNames));
 end
 
 
 
 bs = params.bufferSize;
-bin_size = trial_data(1).bin_size;
+bin_size = in_data(1).bin_size;
 
 % Do we need to interpolate?
 if bin_size ~= params.time_step
@@ -60,33 +60,35 @@ end
 
 
 tic
-for a = 1:numel(params.trialInd)
+spindlePool = parpool;
+parfor a = 1:numel(params.trialInd)
 
 % Take out relevant data from trial a and pad so model can initialize
 
     thisTrial = params.trialInd(a);
+    thisMus = params.musName;
     
-    disp(['Now Simulating Trial: ' num2str(thisTrial)])
+    disp(['Now Simulating Trial: ' thisMus ' ' num2str(thisTrial)])
     
     if params.bumps
-        if isnan(trial_data(thisTrial).bumpDir(thisTrial))
-            startIdx = trial_data(thisTrial).idx_goCueTime - 10;
-            endIdx = trial_data(thisTrial).idx_goCueTime + 100;
+        if isnan(in_data(thisTrial).bumpDir(thisTrial))
+            startIdx = in_data(thisTrial).idx_goCueTime - 10;
+            endIdx = in_data(thisTrial).idx_goCueTime + 100;
         else
-            startIdx = trial_data(thisTrial).idx_bumpTime - 10;
-            endIdx = trial_data(thisTrial).idx_bumpTime + 100;
+            startIdx = in_data(thisTrial).idx_bumpTime - 10;
+            endIdx = in_data(thisTrial).idx_bumpTime + 100;
         end
         if isnan(startIdx) || isnan(endIdx)
             startIdx = 1;
             endIdx = 601;
         end
     else
-        if numel(trial_data)==1
+        if numel(in_data)==1
             startIdx = 1;
-            endIdx = size(trial_data.pos,1);
+            endIdx = size(in_data.musLenRel,1);
         else 
             startIdx = 1;
-            endIdx = size(trial_data(a).pos,1);
+            endIdx = size(in_data(a).musLenRel,1);
         end
     end
     
@@ -98,37 +100,43 @@ for a = 1:numel(params.trialInd)
     
 
     %%% Get gamma and cdl variables, interpolate if necessary
-    gamma = trial_data(thisTrial).emgNorm(timeIdx,emgInd);
-%     gamma = [ones(bs,1)*gamma(1); gamma];
-    cdl = trial_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
+    if strcmpi(params.gamma,'agc')
+        gammaD = in_data(thisTrial).emgNorm(timeIdx,emgInd);
+        gammaS = in_data(thisTrial).emgNorm(timeIdx,emgInd);
+    elseif strcmpi(params.gamma,'pas')
+        gammaD = 0.3*ones(size(in_data(thisTrial).emgNorm(timeIdx,emgInd)));
+        gammaS = 0.3*ones(size(in_data(thisTrial).emgNorm(timeIdx,emgInd)));
+    elseif strcmpi(params.gamma,'static')
+        gammaD = 0.3*ones(size(in_data(thisTrial).emgNorm(timeIdx,emgInd)));
+        gammaS = in_data(thisTrial).emgNorm(timeIdx,emgInd);    
+    end
+    %     gamma = [ones(bs,1)*gamma(1); gamma];
+    cdl = in_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
     cdl = [ones(bs,1)*cdl(1); cdl]';
 
     % If we need to interpolate
     if interpolate == 1
         t_interp = (-bs*bin_size:time_step:(endIdx-startIdx)*bin_size);
-        gamma = interp1(t,gamma,t_interp);
+        gammaS = interp1(t,gammaS,t_interp);
+        gammaD = interp1(t,gammaD,t_interp);
         cdl = interp1(t,cdl,t_interp);
         t = t_interp;
     end
     
     %%% Process emg into gamma signal
-    gamma = smooth(gamma,0.05/(t(2)-t(1))); %50 ms smoothing filter
-    %if we want constant gamma, use initial value
-%     gamma = gamma(1)*ones(size(gamma));
+    gammaS = smooth(gammaS,0.03/(t(2)-t(1))); %30 ms smoothing filter
+    gammaD = smooth(gammaD,0.03/(t(2)-t(1))); %30 ms smoothing filter
+    %if we want constant gamma, use initial value   
     
-%     gammaD = 0.2*ones(size(gamma));
-    gammaD = gamma;
+%     gammaD = gamma;
     gammaDinit = gammaD(1);
-%     gammaD = [ones(bs,1)*gammaDinit; gammaD];
     delta_gammaD = diff(gammaD);
     delta_gammaD = [gammaDinit+0.1; delta_gammaD];
     
     delta_gammaD(gammaD>=1) = 0; %saturate gamma at 1
     
-%     gammaS = 0.2*ones(size(gamma));
-    gammaS = gamma;
+%     gammaS = gamma;
     gammaSinit = gammaS(1);
-%     gammaS = [ones(bs,1)*gammaSinit; gammaS];
     delta_gammaS = diff(gammaS);
     delta_gammaS = [gammaSinit+0.1; delta_gammaS];
     
@@ -140,13 +148,13 @@ for a = 1:numel(params.trialInd)
     cdlInit = cdl(1)-1300;
     delta_cdl = diff(cdl);
     delta_cdl(end+1) = delta_cdl(end);
-%     delta_cdl = trial_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
-%     delta_cdl = trial_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
+%     delta_cdl = in_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
+%     delta_cdl = in_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
     delta_cdl(1) = cdlInit;
 %     delta_cdl = smooth(delta_cdl,10);
 %     delta_cdl = delta_cdl;
 
-    if sum(isnan(delta_cdl)) || sum(isnan(gamma))
+    if sum(isnan(delta_cdl)) || sum(isnan(gammaD)) || sum(isnan(gammaS))
        delta_cdl = zeros(size(delta_cdl));
        delta_gammaS = zeros(size(delta_cdl));
        delta_gammaD = zeros(size(delta_cdl));
@@ -173,7 +181,7 @@ for a = 1:numel(params.trialInd)
             out(a).trialInd = thisTrial;
             out(a).errorflag = 1;
         else 
-            [r,rs,rd] = sarc2spindle(dataB(a),dataC(a),1,2,0.03,1,0.0);
+            [r,rs,rd] = sarc2spindle(dataB(a),dataC(a),1,2,0.03,0,0.0);
             if strcmpi(params.dataStore,'lean')
                 out(a).r = r(bs+1:end)';
                 out(a).rs = rs(bs+1:end)';
@@ -193,9 +201,10 @@ for a = 1:numel(params.trialInd)
                 
             end
         end
-%     trial_data(a).spindle = out(a);  %Weird indexing because of parfor
+%     in_data(a).spindle = out(a);  %Weird indexing because of parfor
     
 %     out(a).gamma = gammaD(bs+1:end);
 end
+delete(spindlePool);
 toc
 end

@@ -4,30 +4,33 @@ function trial_data = getRelMusLen(trial_data,params)
 % - Pennation angles?
 % - 
 
-if params.opensimChris % Are we post processing Chris's data?
-    % Set some default values
-    if ~isfield(params,'idx_opensimLen')
-        params.idx_opensimLen = 15:53;
+if isfield(params,'opensimChris') % Are we post processing Chris's data?
+    if params.opensimChris
+        % Set some default values
+        if ~isfield(params,'idx_opensimLen')
+            params.idx_opensimLen = 15:53;
+        end
+        
+        if ~isfield(params,'idx_opensimVel')
+            params.idx_opensimVel = 54:92;
+        end
+        
+        if ~isfield(params,'L0')
+            params.L0 = 'session_mean';
+        end
+        
+        if strcmpi(params.L0,'session_mean')
+            L0 = nanmean(trial_data.opensim(:,params.idx_opensimLen));
+        elseif strcmpi(params.L0,'arbitrary')
+            idx = params.L0idx;
+            L0 = nanmean(trial_data.opensim(idx,params.idx_opensimLen));
+        elseif strcmpi(params.L0,'trial_init')
+            idx = trial_data.idx_startTime; %This should be before bump
+            L0 = mean(trial_data.opensim(idx:idx+4,params.idx_opensimLen));
+        elseif ~isstring(params.L0)
+            L0 = params.L0;
+        end
     end
-    
-    if ~isfield(params,'idx_opensimVel')
-        params.idx_opensimVel = 54:92;
-    end
-    
-    if ~isfield(params,'L0')
-        params.L0 = 'session_mean';
-    end
-    
-    if strcmpi(params.L0,'session_mean')
-        L0 = nanmean(trial_data.opensim(:,params.idx_opensimLen));
-    elseif strcmpi(params.L0,'arbitrary')
-        idx = params.L0idx;
-        L0 = nanmean(trial_data.opensim(idx,params.idx_opensimLen));
-    elseif strcmpi(params.L0,'trial_init')
-        idx = trial_data.idx_startTime; %This should be before bump
-        L0 = mean(trial_data.opensim(idx:idx+4,params.idx_opensimLen));
-    end
-    
 else
     if strcmpi(params.L0,'session_mean')
         L0 = nanmean(trial_data.muscle_len);
@@ -37,6 +40,8 @@ else
     elseif strcmpi(params.L0,'trial_init')
         idx = trial_data.idx_startTime; %This should be before bump
         L0 = mean(trial_data.muscle_len);
+    elseif ~isstring(params.L0)
+        L0 = params.L0;
     end
 
     

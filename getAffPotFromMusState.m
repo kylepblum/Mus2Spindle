@@ -59,17 +59,12 @@ end
 %%%%%%%%%%%%%%%%
 
 
-tic
-spindlePool = parpool;
-parfor a = 1:numel(params.trialInd)
+% spindlePool = parpool;
+for a = 1
 
 % Take out relevant data from trial a and pad so model can initialize
 
-    thisTrial = params.trialInd(a);
-    thisMus = params.musName;
-    
-    disp(['Now Simulating Trial: ' thisMus ' ' num2str(thisTrial)])
-    
+    thisTrial = a;
     if params.bumps
         if isnan(in_data(thisTrial).bumpDir(thisTrial))
             startIdx = in_data(thisTrial).idx_goCueTime - 10;
@@ -111,21 +106,25 @@ parfor a = 1:numel(params.trialInd)
         gammaS = in_data(thisTrial).emgNorm(timeIdx,emgInd);    
     end
     %     gamma = [ones(bs,1)*gamma(1); gamma];
-    cdl = in_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
-    cdl = [ones(bs,1)*cdl(1); cdl]';
+%     cdl = in_data(thisTrial).musLenRel(timeIdx,musInd)*1300;
+%     cdl = [ones(bs,1)*cdl(1); cdl]';
+    
+    delta_cdl = -in_data(thisTrial).musVelRel(timeIdx,musInd)*1300*bin_size;
+%     delta_cdl(1) = 1300; 
 
     % If we need to interpolate
     if interpolate == 1
         t_interp = (-bs*bin_size:time_step:(endIdx-startIdx)*bin_size);
         gammaS = interp1(t,gammaS,t_interp);
         gammaD = interp1(t,gammaD,t_interp);
-        cdl = interp1(t,cdl,t_interp);
+%         cdl = interp1(t,cdl,t_interp);
+        delta_cdl = interp1(t,delta_cdl,t_interp);
         t = t_interp;
     end
     
     %%% Process emg into gamma signal
-    gammaS = smooth(gammaS,0.03/(t(2)-t(1))); %30 ms smoothing filter
-    gammaD = smooth(gammaD,0.03/(t(2)-t(1))); %30 ms smoothing filter
+%     gammaS = movmean(gammaS,0.03/(t(2)-t(1))); %30 ms smoothing filter
+%     gammaD = movmean(gammaD,0.03/(t(2)-t(1))); %30 ms smoothing filter
     %if we want constant gamma, use initial value   
     
 %     gammaD = gamma;
@@ -145,13 +144,13 @@ parfor a = 1:numel(params.trialInd)
     % GET L0 as a struct field?
     % Initialize hs with real initial lengths!
     % develop driver to take bagParams/chainParams to initialize hs models
-    cdlInit = cdl(1)-1300;
-    delta_cdl = diff(cdl);
-    delta_cdl(end+1) = delta_cdl(end);
+%     cdlInit = cdl(1)-1300;
+%     delta_cdl = diff(cdl);
+%     delta_cdl(end+1) = delta_cdl(end);
 %     delta_cdl = in_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
 %     delta_cdl = in_data(thisTrial).musVelRel(timeIdx,musInd)*bin_size*1300; %transform velocity from L0/s into model units (nm/dt): 0.01 s/dt, 1300 nm/L0
-    delta_cdl(1) = cdlInit;
-%     delta_cdl = smooth(delta_cdl,10);
+%     delta_cdl(1) = cdlInit;
+%     delta_cdl = movmean(delta_cdl,10);
 %     delta_cdl = delta_cdl;
 
     if sum(isnan(delta_cdl)) || sum(isnan(gammaD)) || sum(isnan(gammaS))
@@ -181,15 +180,22 @@ parfor a = 1:numel(params.trialInd)
             out(a).trialInd = thisTrial;
             out(a).errorflag = 1;
         else 
-            [r,rs,rd] = sarc2spindle(dataB(a),dataC(a),1,2,0.03,0,0.0);
+%             [r,rs,rd] = sarc2spindle(dataB(a),dataC(a),1,2,0.03,0,0.0);
             if strcmpi(params.dataStore,'lean')
-                out(a).r = r(bs+1:end)';
-                out(a).rs = rs(bs+1:end)';
-                out(a).rd = rd(bs+1:end)';
+%                 out(a).r = r(bs+1:end)';
+%                 out(a).rs = rs(bs+1:end)';
+%                 out(a).rd = rd(bs+1:end)';
                 out(a).bin_size = time_step; % Rename to be consistent with TD
-                out(a).dataB.f_activated = dataB(a).f_activated(bs+1:end)';
-                out(a).dataC.f_activated = dataC(a).f_activated(bs+1:end)';
+%                 out(a).dataB.f_activated = dataB(a).f_activated(bs+1:end)';
+%                 out(a).dataC.f_activated = dataC(a).f_activated(bs+1:end)';
+                out(a).dataB.hs_force = dataB(a).hs_force(bs+1:end)';
+                out(a).dataC.hs_force = dataC(a).hs_force(bs+1:end)';
                 out(a).dataB.cmd_length = dataB(a).cmd_length(bs+1:end)';
+                out(a).dataC.cmd_length = dataC(a).cmd_length(bs+1:end)';
+                out(a).dataB.time_step = time_step;
+                out(a).dataC.time_step = time_step;
+%                 out(a).dataB.t
+%                 out(a).dataC.t = t(bs+1:end)';
             else
                 out(a).r = r(bs+1:end);
                 out(a).dataB = removeBufferFromStruct(dataB(a),bs);
@@ -205,6 +211,5 @@ parfor a = 1:numel(params.trialInd)
     
 %     out(a).gamma = gammaD(bs+1:end);
 end
-delete(spindlePool);
-toc
+% delete(spindlePool);
 end
